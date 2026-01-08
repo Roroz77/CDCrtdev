@@ -1,102 +1,94 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Cahiers des Charges</title>
+<meta charset="UTF-8">
+<title>Cahier des Charges</title>
 
-  <!-- React -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Babel -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body>
-  <div id="root"></div>
+<body class="bg-gray-100">
+<div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+<script type="text/babel">
+const { useState, useEffect } = React;
 
-    function ProjectManager() {
-      const [projects, setProjects] = useState([]);
-      const [showForm, setShowForm] = useState(false);
-      const [viewProject, setViewProject] = useState(null);
-      const [editingProject, setEditingProject] = useState(null);
-      const [darkMode, setDarkMode] = useState(true);
+function App() {
+  const empty = {
+    clientName: "",
+    clientEmail: "",
+    projectName: "",
+    projectType: "",
+    language: "",
+    priority: "Moyenne",
+    status: "En attente",
+    budget: "",
+    deadline: "",
+    description: "",
+    features: "",
+    technical: "",
+    notes: ""
+  };
 
-      const emptyForm = {
-        clientName: "",
-        clientEmail: "",
-        projectName: "",
-        projectType: "",
-        language: "",
-        priority: "Moyenne",
-        status: "En attente",
-        budget: "",
-        deadline: "",
-        description: "",
-        features: "",
-        technicalRequirements: "",
-        notes: ""
-      };
+  const [projects, setProjects] = useState([]);
+  const [form, setForm] = useState(empty);
+  const [editing, setEditing] = useState(null);
+  const [view, setView] = useState(null);
+  const [dark, setDark] = useState(true);
 
-      const [formData, setFormData] = useState(emptyForm);
+  useEffect(() => {
+    const p = localStorage.getItem("cdc");
+    const t = localStorage.getItem("theme");
+    if (p) setProjects(JSON.parse(p));
+    if (t) setDark(t === "dark");
+  }, []);
 
-      useEffect(() => {
-        const saved = localStorage.getItem("cdc-projects");
-        const theme = localStorage.getItem("cdc-theme");
-        if (saved) setProjects(JSON.parse(saved));
-        if (theme) setDarkMode(theme === "dark");
-      }, []);
+  useEffect(() => {
+    localStorage.setItem("cdc", JSON.stringify(projects));
+  }, [projects]);
 
-      useEffect(() => {
-        localStorage.setItem("cdc-projects", JSON.stringify(projects));
-      }, [projects]);
+  useEffect(() => {
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
 
-      useEffect(() => {
-        localStorage.setItem("cdc-theme", darkMode ? "dark" : "light");
-      }, [darkMode]);
+  const save = () => {
+    if (!form.clientName || !form.projectName || !form.projectType || !form.description) {
+      alert("Merci de remplir les champs obligatoires");
+      return;
+    }
 
-      const saveProject = () => {
-        if (!formData.clientName || !formData.projectName || !formData.projectType || !formData.language || !formData.description) {
-          alert("Veuillez remplir les champs obligatoires");
-          return;
-        }
+    const obj = {
+      ...form,
+      id: editing ? editing.id : Date.now(),
+      createdAt: editing ? editing.createdAt : new Date().toISOString()
+    };
 
-        const project = {
-          ...formData,
-          id: editingProject ? editingProject.id : Date.now(),
-          createdAt: editingProject ? editingProject.createdAt : new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
+    setProjects(editing
+      ? projects.map(p => p.id === obj.id ? obj : p)
+      : [...projects, obj]
+    );
 
-        setProjects(editingProject
-          ? projects.map(p => p.id === project.id ? project : p)
-          : [...projects, project]
-        );
+    setForm(empty);
+    setEditing(null);
+  };
 
-        setFormData(emptyForm);
-        setEditingProject(null);
-        setShowForm(false);
-      };
+  const exportCDC = p => {
+    const txt = `CAHIER DES CHARGES
 
-      const exportCDC = (p) => {
-        const content = `
-CAHIER DES CHARGES
+CLIENT
+${p.clientName}
+${p.clientEmail}
 
-Client : ${p.clientName}
-Email : ${p.clientEmail}
-Projet : ${p.projectName}
+PROJET
+${p.projectName}
 Type : ${p.projectType}
-Langage : ${p.language}
-Priorité : ${p.priority}
-Statut : ${p.status}
-Budget : ${p.budget}
-Deadline : ${p.deadline}
+Technologie : ${p.language}
 
 DESCRIPTION
 ${p.description}
@@ -105,120 +97,143 @@ FONCTIONNALITÉS
 ${p.features}
 
 EXIGENCES TECHNIQUES
-${p.technicalRequirements}
+${p.technical}
 
 NOTES
 ${p.notes}
-        `;
+`;
+    const b = new Blob([txt], { type: "text/plain" });
+    const u = URL.createObjectURL(b);
+    const a = document.createElement("a");
+    a.href = u;
+    a.download = `CDC_${p.projectName.replace(/\s+/g, "_")}.txt`;
+    a.click();
+    URL.revokeObjectURL(u);
+  };
 
-        const blob = new Blob([content], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `CDC_${p.projectName.replace(/\s+/g, "_")}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-      };
+  const bg = dark ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900";
+  const card = dark ? "bg-gray-800" : "bg-white";
 
-      const bg = darkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800";
-      const card = darkMode ? "bg-gray-800" : "bg-white";
+  return (
+    <div className={`min-h-screen ${bg}`}>
+      <div className="max-w-xl mx-auto p-4">
 
-      return (
-        <div className={`min-h-screen ${bg} p-4`}>
-          <div className="max-w-5xl mx-auto">
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-xl font-bold">Cahiers des Charges</h1>
+          <button
+            onClick={() => setDark(!dark)}
+            className="px-3 py-2 rounded bg-indigo-600 text-white text-sm">
+            {dark ? "☀️" : "🌙"}
+          </button>
+        </header>
 
-            <div className="flex justify-between mb-6">
-              <h1 className="text-3xl font-bold">Cahiers des Charges</h1>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="px-4 py-2 rounded bg-indigo-600 text-white"
-              >
-                {darkMode ? "☀️ Clair" : "🌙 Sombre"}
-              </button>
-            </div>
+        {!view && (
+          <button
+            onClick={() => { setForm(empty); setEditing(null); }}
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold mb-4">
+            ➕ Nouveau projet
+          </button>
+        )}
 
-            {!showForm && !viewProject && (
-              <>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="mb-4 bg-green-600 text-white px-4 py-2 rounded"
-                >
-                  ➕ Nouveau projet
-                </button>
+        {!view && !editing && (
+          <div className="space-y-3">
+            {projects.map(p => (
+              <div key={p.id} className={`${card} p-4 rounded-xl`}>
+                <p className="font-semibold">{p.projectName}</p>
+                <p className="text-sm opacity-70">{p.clientName}</p>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  {projects.map(p => (
-                    <div key={p.id} className={`${card} p-4 rounded`}>
-                      <h3 className="font-bold">{p.projectName}</h3>
-                      <p className="text-sm">{p.clientName}</p>
-
-                      <div className="flex gap-2 mt-3">
-                        <button onClick={() => setViewProject(p)} className="bg-indigo-600 text-white px-3 py-1 rounded">
-                          Voir
-                        </button>
-                        <button onClick={() => { setEditingProject(p); setFormData(p); setShowForm(true); }} className="bg-yellow-500 px-3 py-1 rounded">
-                          Modifier
-                        </button>
-                        <button onClick={() => setProjects(projects.filter(x => x.id !== p.id))} className="bg-red-600 text-white px-3 py-1 rounded">
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {viewProject && (
-              <div className={`${card} p-4 rounded`}>
-                <h2 className="text-2xl font-bold mb-2">{viewProject.projectName}</h2>
-                <p><b>Client :</b> {viewProject.clientName}</p>
-                <p><b>Description :</b></p>
-                <pre className="whitespace-pre-wrap">{viewProject.description}</pre>
-
-                <div className="flex gap-3 mt-4">
-                  <button onClick={() => exportCDC(viewProject)} className="bg-indigo-600 text-white px-4 py-2 rounded">
-                    📄 Exporter CDC
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setView(p)} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg">
+                    Voir
                   </button>
-                  <button onClick={() => setViewProject(null)} className="bg-gray-500 text-white px-4 py-2 rounded">
-                    Retour
+                  <button onClick={() => { setForm(p); setEditing(p); }} className="flex-1 bg-yellow-500 py-2 rounded-lg">
+                    Modifier
                   </button>
                 </div>
               </div>
-            )}
-
-            {showForm && (
-              <div className={`${card} p-4 rounded`}>
-                <h2 className="text-xl font-bold mb-3">{editingProject ? "Modifier" : "Nouveau"} projet</h2>
-
-                {Object.keys(emptyForm).map(k => (
-                  <div key={k} className="mb-2">
-                    <input
-                      placeholder={k}
-                      value={formData[k]}
-                      onChange={e => setFormData({...formData, [k]: e.target.value})}
-                      className="w-full p-2 rounded text-black"
-                    />
-                  </div>
-                ))}
-
-                <div className="flex gap-3 mt-4">
-                  <button onClick={saveProject} className="bg-green-600 text-white px-4 py-2 rounded">
-                    💾 Sauvegarder
-                  </button>
-                  <button onClick={() => setShowForm(false)} className="bg-gray-500 text-white px-4 py-2 rounded">
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-
+            ))}
           </div>
-        </div>
-      );
-    }
+        )}
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<ProjectManager />);
-  </script>
+        {view && (
+          <div className={`${card} p-4 rounded-xl space-y-3`}>
+            <h2 className="text-lg font-bold">{view.projectName}</h2>
+            <p><b>Client :</b> {view.clientName}</p>
+            <p className="whitespace-pre-wrap">{view.description}</p>
+
+            <button
+              onClick={() => exportCDC(view)}
+              className="w-full bg-green-600 text-white py-3 rounded-xl">
+              📄 Exporter le CDC
+            </button>
+
+            <button
+              onClick={() => setView(null)}
+              className="w-full bg-gray-500 text-white py-2 rounded-xl">
+              Retour
+            </button>
+          </div>
+        )}
+
+        {(editing !== null) && (
+          <div className={`${card} p-4 rounded-xl space-y-4`}>
+            <h2 className="text-lg font-bold">Informations du projet</h2>
+
+            <input placeholder="Nom du client *" value={form.clientName}
+              onChange={e => setForm({...form, clientName: e.target.value})}
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <input placeholder="Email du client"
+              value={form.clientEmail}
+              onChange={e => setForm({...form, clientEmail: e.target.value})}
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <input placeholder="Nom du projet *"
+              value={form.projectName}
+              onChange={e => setForm({...form, projectName: e.target.value})}
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <input placeholder="Type de projet (site, app, bot...) *"
+              value={form.projectType}
+              onChange={e => setForm({...form, projectType: e.target.value})}
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <textarea placeholder="Description du projet *"
+              value={form.description}
+              onChange={e => setForm({...form, description: e.target.value})}
+              rows="4"
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <textarea placeholder="Fonctionnalités attendues"
+              value={form.features}
+              onChange={e => setForm({...form, features: e.target.value})}
+              rows="3"
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <textarea placeholder="Exigences techniques"
+              value={form.technical}
+              onChange={e => setForm({...form, technical: e.target.value})}
+              rows="3"
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <textarea placeholder="Notes"
+              value={form.notes}
+              onChange={e => setForm({...form, notes: e.target.value})}
+              rows="2"
+              className="w-full p-3 rounded-lg text-black"/>
+
+            <button onClick={save} className="w-full bg-indigo-600 text-white py-3 rounded-xl">
+              💾 Enregistrer
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
 </body>
 </html>
