@@ -1,0 +1,698 @@
+import React, { useState, useEffect } from ‘react’;
+import { Plus, Search, Edit2, Trash2, Eye, Download, X, Save, Filter, Moon, Sun } from ‘lucide-react’;
+
+const ProjectManager = () => {
+const [projects, setProjects] = useState([]);
+const [showForm, setShowForm] = useState(false);
+const [editingProject, setEditingProject] = useState(null);
+const [searchTerm, setSearchTerm] = useState(’’);
+const [filterType, setFilterType] = useState(‘all’);
+const [viewProject, setViewProject] = useState(null);
+const [showFilters, setShowFilters] = useState(false);
+const [darkMode, setDarkMode] = useState(true);
+
+const projectTypes = [
+‘Bot Discord’,
+‘Plugin Minecraft’,
+‘Site Web’,
+‘Logiciel Python’,
+‘Application Mobile’,
+‘API/Backend’,
+‘Autre’
+];
+
+const languages = [
+‘JavaScript/Node.js’,
+‘Python’,
+‘Java’,
+‘PHP’,
+‘C#’,
+‘TypeScript’,
+‘Go’,
+‘Ruby’,
+‘Autre’
+];
+
+const priorities = [‘Basse’, ‘Moyenne’, ‘Haute’, ‘Urgente’];
+const statuses = [‘En attente’, ‘En cours’, ‘Terminé’, ‘Annulé’];
+
+useEffect(() => {
+loadProjects();
+loadTheme();
+}, []);
+
+useEffect(() => {
+saveTheme();
+}, [darkMode]);
+
+const loadTheme = async () => {
+try {
+const result = await window.storage.get(‘theme’);
+if (result) {
+setDarkMode(result.value === ‘dark’);
+}
+} catch (error) {
+console.log(‘No theme saved’);
+}
+};
+
+const saveTheme = async () => {
+try {
+await window.storage.set(‘theme’, darkMode ? ‘dark’ : ‘light’);
+} catch (error) {
+console.error(‘Error saving theme:’, error);
+}
+};
+
+const loadProjects = async () => {
+try {
+const result = await window.storage.list(‘project:’);
+if (result && result.keys) {
+const loadedProjects = await Promise.all(
+result.keys.map(async (key) => {
+const data = await window.storage.get(key);
+return data ? JSON.parse(data.value) : null;
+})
+);
+setProjects(loadedProjects.filter(p => p !== null));
+}
+} catch (error) {
+console.log(‘No existing projects found’);
+}
+};
+
+const saveProject = async (project) => {
+try {
+await window.storage.set(`project:${project.id}`, JSON.stringify(project));
+await loadProjects();
+} catch (error) {
+console.error(‘Error saving project:’, error);
+}
+};
+
+const deleteProject = async (id) => {
+try {
+await window.storage.delete(`project:${id}`);
+await loadProjects();
+} catch (error) {
+console.error(‘Error deleting project:’, error);
+}
+};
+
+const [formData, setFormData] = useState({
+clientName: ‘’,
+clientEmail: ‘’,
+projectName: ‘’,
+projectType: ‘’,
+language: ‘’,
+priority: ‘Moyenne’,
+status: ‘En attente’,
+budget: ‘’,
+deadline: ‘’,
+description: ‘’,
+features: ‘’,
+technicalRequirements: ‘’,
+notes: ‘’
+});
+
+const resetForm = () => {
+setFormData({
+clientName: ‘’,
+clientEmail: ‘’,
+projectName: ‘’,
+projectType: ‘’,
+language: ‘’,
+priority: ‘Moyenne’,
+status: ‘En attente’,
+budget: ‘’,
+deadline: ‘’,
+description: ‘’,
+features: ‘’,
+technicalRequirements: ‘’,
+notes: ‘’
+});
+setEditingProject(null);
+};
+
+const handleSubmit = async () => {
+if (!formData.clientName || !formData.projectName || !formData.projectType ||
+!formData.language || !formData.description) {
+alert(‘Veuillez remplir tous les champs obligatoires (*)’);
+return;
+}
+
+```
+const newProject = {
+  ...formData,
+  id: editingProject ? editingProject.id : Date.now(),
+  createdAt: editingProject ? editingProject.createdAt : new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
+
+await saveProject(newProject);
+setShowForm(false);
+resetForm();
+```
+
+};
+
+const handleEdit = (project) => {
+setFormData(project);
+setEditingProject(project);
+setShowForm(true);
+window.scrollTo(0, 0);
+};
+
+const handleDelete = async (id) => {
+if (window.confirm(‘Supprimer ce projet ?’)) {
+await deleteProject(id);
+}
+};
+
+# const exportProject = (project) => {
+const content = `CAHIER DES CHARGES
+
+Client: ${project.clientName}
+Email: ${project.clientEmail}
+Projet: ${project.projectName}
+Type: ${project.projectType}
+Langage: ${project.language}
+Priorité: ${project.priority}
+Statut: ${project.status}
+Budget: ${project.budget}
+Deadline: ${project.deadline}
+Créé le: ${new Date(project.createdAt).toLocaleDateString(‘fr-FR’)}
+
+## DESCRIPTION
+
+${project.description}
+
+## FONCTIONNALITÉS
+
+${project.features}
+
+## EXIGENCES TECHNIQUES
+
+${project.technicalRequirements}
+
+## NOTES
+
+${project.notes}`;
+
+```
+const blob = new Blob([content], { type: 'text/plain' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `CDC_${project.projectName.replace(/\s+/g, '_')}.txt`;
+a.click();
+URL.revokeObjectURL(url);
+```
+
+};
+
+const filteredProjects = projects.filter(project => {
+const matchesSearch = project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+project.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+const matchesFilter = filterType === ‘all’ || project.projectType === filterType;
+return matchesSearch && matchesFilter;
+});
+
+const getPriorityColor = (priority) => {
+const colors = {
+‘Basse’: ‘bg-green-500 text-white’,
+‘Moyenne’: ‘bg-blue-500 text-white’,
+‘Haute’: ‘bg-orange-500 text-white’,
+‘Urgente’: ‘bg-red-500 text-white’
+};
+return colors[priority] || ‘bg-gray-500 text-white’;
+};
+
+const getStatusColor = (status) => {
+const colors = {
+‘En attente’: ‘bg-yellow-500 text-white’,
+‘En cours’: ‘bg-blue-500 text-white’,
+‘Terminé’: ‘bg-green-500 text-white’,
+‘Annulé’: ‘bg-gray-500 text-white’
+};
+return colors[status] || ‘bg-gray-500 text-white’;
+};
+
+const bgClass = darkMode
+? ‘bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900’
+: ‘bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100’;
+
+const cardClass = darkMode
+? ‘bg-gray-800 text-white’
+: ‘bg-white text-gray-800’;
+
+const inputClass = darkMode
+? ‘bg-gray-700 text-white border-gray-600 focus:border-indigo-500’
+: ‘bg-white text-gray-800 border-gray-300 focus:border-indigo-500’;
+
+const textClass = darkMode ? ‘text-gray-300’ : ‘text-gray-600’;
+const titleClass = darkMode ? ‘text-white’ : ‘text-gray-800’;
+const sectionBgClass = darkMode ? ‘bg-gray-700’ : ‘bg-gray-100’;
+
+return (
+<div className={`min-h-screen ${bgClass} transition-colors duration-300`}>
+<div className="max-w-7xl mx-auto p-4 sm:p-6">
+
+```
+    {/* Header */}
+    <div className="mb-6 flex justify-between items-start">
+      <div>
+        <h1 className={`text-2xl sm:text-3xl font-bold ${titleClass} mb-1`}>
+          Cahiers des Charges
+        </h1>
+        <p className={`${textClass} text-sm sm:text-base`}>
+          Gestion de projets clients
+        </p>
+      </div>
+      
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        className={`${darkMode ? 'bg-gray-700 text-yellow-400' : 'bg-white text-indigo-600'} p-3 rounded-xl shadow-lg hover:scale-110 transition-transform duration-200`}
+        title={darkMode ? 'Mode clair' : 'Mode sombre'}
+      >
+        {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+      </button>
+    </div>
+
+    {/* Barre d'actions */}
+    <div className={`${cardClass} rounded-xl shadow-lg p-3 sm:p-4 mb-6`}>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => { resetForm(); setShowForm(true); }}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition w-full sm:w-auto"
+        >
+          <Plus size={20} />
+          Nouveau
+        </button>
+
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+          />
+        </div>
+
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`sm:hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} px-4 py-3 rounded-lg flex items-center justify-center gap-2`}
+        >
+          <Filter size={20} />
+          Filtres
+        </button>
+
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className={`hidden sm:block px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none`}
+        >
+          <option value="all">Tous</option>
+          {projectTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+
+      {showFilters && (
+        <div className="mt-3 sm:hidden">
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none`}
+          >
+            <option value="all">Tous les types</option>
+            {projectTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+
+    {/* Liste des projets */}
+    {!showForm && !viewProject && (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredProjects.map(project => (
+          <div key={project.id} className={`${cardClass} rounded-xl shadow-lg p-4 hover:shadow-2xl transition-shadow duration-200`}>
+            <div className="mb-3">
+              <h3 className={`text-lg font-bold ${titleClass} mb-1 truncate`}>
+                {project.projectName}
+              </h3>
+              <p className={`${textClass} text-sm truncate`}>
+                {project.clientName}
+              </p>
+            </div>
+
+            <div className="flex gap-2 mb-3 flex-wrap">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                {project.status}
+              </span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(project.priority)}`}>
+                {project.priority}
+              </span>
+            </div>
+
+            <div className={`text-xs ${textClass} mb-3 space-y-1`}>
+              <p className="truncate">{project.projectType}</p>
+              <p className="truncate">{project.language}</p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewProject(project)}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition"
+              >
+                Voir
+              </button>
+              <button
+                onClick={() => handleEdit(project)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg transition"
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                onClick={() => handleDelete(project.id)}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {filteredProjects.length === 0 && (
+          <div className={`col-span-full text-center py-12 ${cardClass} rounded-xl`}>
+            <p className={textClass}>Aucun projet trouvé</p>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Vue détaillée */}
+    {viewProject && (
+      <div className={`${cardClass} rounded-xl shadow-lg p-4 sm:p-6`}>
+        <div className="flex justify-between items-start mb-4">
+          <h2 className={`text-xl sm:text-2xl font-bold ${titleClass}`}>
+            {viewProject.projectName}
+          </h2>
+          <button
+            onClick={() => setViewProject(null)}
+            className={`${textClass} hover:opacity-70`}
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className={`${sectionBgClass} rounded-lg p-3`}>
+            <p className={`text-sm ${textClass} mb-1`}>Client</p>
+            <p className={`font-medium ${titleClass}`}>{viewProject.clientName}</p>
+            {viewProject.clientEmail && <p className={`text-sm ${textClass}`}>{viewProject.clientEmail}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-xs ${textClass} mb-1`}>Type</p>
+              <p className={`text-sm font-medium ${titleClass}`}>{viewProject.projectType}</p>
+            </div>
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-xs ${textClass} mb-1`}>Langage</p>
+              <p className={`text-sm font-medium ${titleClass}`}>{viewProject.language}</p>
+            </div>
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-xs ${textClass} mb-1`}>Statut</p>
+              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(viewProject.status)}`}>
+                {viewProject.status}
+              </span>
+            </div>
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-xs ${textClass} mb-1`}>Priorité</p>
+              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(viewProject.priority)}`}>
+                {viewProject.priority}
+              </span>
+            </div>
+          </div>
+
+          {viewProject.budget && (
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-sm ${textClass} mb-1`}>Budget</p>
+              <p className={`font-medium ${titleClass}`}>{viewProject.budget}</p>
+            </div>
+          )}
+
+          {viewProject.deadline && (
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-sm ${textClass} mb-1`}>Deadline</p>
+              <p className={`font-medium ${titleClass}`}>{new Date(viewProject.deadline).toLocaleDateString('fr-FR')}</p>
+            </div>
+          )}
+
+          <div className={`${sectionBgClass} rounded-lg p-3`}>
+            <p className={`text-sm ${textClass} mb-2 font-medium`}>Description</p>
+            <p className={`text-sm ${titleClass} whitespace-pre-wrap`}>{viewProject.description}</p>
+          </div>
+
+          {viewProject.features && (
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-sm ${textClass} mb-2 font-medium`}>Fonctionnalités</p>
+              <p className={`text-sm ${titleClass} whitespace-pre-wrap`}>{viewProject.features}</p>
+            </div>
+          )}
+
+          {viewProject.technicalRequirements && (
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-sm ${textClass} mb-2 font-medium`}>Exigences Techniques</p>
+              <p className={`text-sm ${titleClass} whitespace-pre-wrap`}>{viewProject.technicalRequirements}</p>
+            </div>
+          )}
+
+          {viewProject.notes && (
+            <div className={`${sectionBgClass} rounded-lg p-3`}>
+              <p className={`text-sm ${textClass} mb-2 font-medium`}>Notes</p>
+              <p className={`text-sm ${titleClass} whitespace-pre-wrap`}>{viewProject.notes}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => exportProject(viewProject)}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition"
+          >
+            <Download size={18} />
+            Exporter
+          </button>
+          <button
+            onClick={() => { handleEdit(viewProject); setViewProject(null); }}
+            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition"
+          >
+            <Edit2 size={18} />
+            Modifier
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Formulaire */}
+    {showForm && (
+      <div className={`${cardClass} rounded-xl shadow-lg p-4 sm:p-6`}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className={`text-xl sm:text-2xl font-bold ${titleClass}`}>
+            {editingProject ? 'Modifier' : 'Nouveau Projet'}
+          </h2>
+          <button
+            onClick={() => { setShowForm(false); resetForm(); }}
+            className={`${textClass} hover:opacity-70`}
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Nom du Client *</label>
+            <input
+              type="text"
+              value={formData.clientName}
+              onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="Nom complet"
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Email</label>
+            <input
+              type="email"
+              value={formData.clientEmail}
+              onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="email@exemple.com"
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Nom du Projet *</label>
+            <input
+              type="text"
+              value={formData.projectName}
+              onChange={(e) => setFormData({...formData, projectName: e.target.value})}
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="Mon projet"
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Type *</label>
+            <select
+              value={formData.projectType}
+              onChange={(e) => setFormData({...formData, projectType: e.target.value})}
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+            >
+              <option value="">Sélectionner...</option>
+              {projectTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Langage *</label>
+            <select
+              value={formData.language}
+              onChange={(e) => setFormData({...formData, language: e.target.value})}
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+            >
+              <option value="">Sélectionner...</option>
+              {languages.map(lang => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={`block text-sm font-medium ${titleClass} mb-1`}>Priorité</label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              >
+                {priorities.map(priority => (
+                  <option key={priority} value={priority}>{priority}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium ${titleClass} mb-1`}>Statut</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              >
+                {statuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Budget</label>
+            <input
+              type="text"
+              value={formData.budget}
+              onChange={(e) => setFormData({...formData, budget: e.target.value})}
+              placeholder="Ex: 500€ - 1000€"
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Deadline</label>
+            <input
+              type="date"
+              value={formData.deadline}
+              onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Description *</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              rows="4"
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="Décrivez le projet..."
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Fonctionnalités</label>
+            <textarea
+              value={formData.features}
+              onChange={(e) => setFormData({...formData, features: e.target.value})}
+              rows="3"
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="Liste des fonctionnalités..."
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Exigences Techniques</label>
+            <textarea
+              value={formData.technicalRequirements}
+              onChange={(e) => setFormData({...formData, technicalRequirements: e.target.value})}
+              rows="3"
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="Spécifications techniques..."
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium ${titleClass} mb-1`}>Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+              rows="2"
+              className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:outline-none text-base`}
+              placeholder="Notes additionnelles..."
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <button
+              onClick={handleSubmit}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition"
+            >
+              <Save size={20} />
+              {editingProject ? 'Mettre à jour' : 'Créer'}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); resetForm(); }}
+              className={`flex-1 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} ${titleClass} px-6 py-3 rounded-lg font-medium transition`}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+```
+
+);
+};
+
+export default ProjectManager;
